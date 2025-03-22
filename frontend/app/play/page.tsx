@@ -1,25 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
-
-const getPieceSymbol = (name: string) => {
-  switch (name) {
-    case "rook":
-      return "♖";
-    case "knight":
-      return "♘";
-    case "bishop":
-      return "♗";
-    case "queen":
-      return "♕";
-    case "king":
-      return "♔";
-    case "pawn":
-      return "♙";
-    default:
-      return "";
-  }
-};
+import Piece from "@/components/piece";
 
 const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -39,35 +21,61 @@ const Page = () => {
     setSelectedPiece({ row, col });
     switch (piece.name) {
       case "pawn":
-        highlightPawnMoves(row, col, piece.color);
+        highlightMoves(row, col, piece.color, piece.name);
+        break;
+      case "rook":
+        highlightMoves(row, col, piece.color, piece.name);
         break;
     }
   };
 
-  const highlightPawnMoves = (row: number, col: number, color: PieceColor) => {
+  const highlightMoves = (row: number, col: number, color: PieceColor, name: string) => {
     const moves = [];
     const direction = color === PieceColor.WHITE ? -1 : 1;
     const initialRow = color === PieceColor.WHITE ? 6 : 1;
-
-    if (isSquareEmpty(row + direction, col)) {
-      moves.push({ row: row + direction, col });
-      if (row == initialRow && isSquareEmpty(row + 2 * direction, col)) {
-        moves.push({ row: row + 2 * direction, col });
-      }
+    switch (name) {
+      case "pawn":
+        if (isSquareEmpty(row + direction, col)) {
+          moves.push({ row: row + direction, col });
+          if (row === initialRow && isSquareEmpty(row + 2 * direction, col)) {
+            moves.push({ row: row + 2 * direction, col });
+          }
+        }
+        break;
+      case "rook":
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col)) moves.push({ row: row + i, col });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col)) moves.push({ row: row - i, col });
+          else break;
+        }
+        for (let j = 1; j <= 7; j++) {
+          if (isSquareEmpty(row, col + j)) moves.push({ row, col: col + j });
+          else break;
+        }
+        for (let j = 1; j <= 7; j++) {
+          if (isSquareEmpty(row, col - j)) moves.push({ row, col: col - j });
+          else break;
+        }
+        break;
     }
     setPossibleMoves(moves);
   };
 
-  const movePiece = (row: number, col: number) => {
+  const movePiece = (position: string) => {
     if (!selectedPiece) return;
+
     setBoardState((prev) =>
       prev.map((piece) => {
         if (piece.position === columns[selectedPiece.col] + rows[selectedPiece.row]) {
-          return { ...piece, position: columns[col] + rows[row] };
+          return { ...piece, position };
         }
         return piece;
       })
     );
+
     setSelectedPiece(null);
     setPossibleMoves([]);
   };
@@ -83,20 +91,11 @@ const Page = () => {
             key={position}
             id={position}
             className={`w-full h-full flex items-center justify-center border cursor-pointer
-              ${(rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800"} 
+              ${(rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800"}
               ${isHighlighted ? "bg-red-300" : ""}`}
-            onClick={() => (isHighlighted ? movePiece(rowIndex, colIndex) : handlePieceClick(rowIndex, colIndex))}
+            onClick={() => (isHighlighted ? movePiece(columns[colIndex] + rows[rowIndex]) : handlePieceClick(rowIndex, colIndex))}
           >
-            {piece && (
-              <span
-                style={{
-                  fontSize: "2rem",
-                  color: piece.color === PieceColor.WHITE ? "white" : "black",
-                }}
-              >
-                {getPieceSymbol(piece.name)}
-              </span>
-            )}
+            {piece && <Piece name={piece.name} color={piece.color} position={piece.position} onClick={() => handlePieceClick(rowIndex, colIndex)} />}
           </div>
         );
       })
