@@ -26,6 +26,9 @@ const Page = () => {
       case "rook":
         highlightMoves(row, col, piece.color, piece.name);
         break;
+      case "bishop":
+        highlightMoves(row, col, piece.color, piece.name);
+        break;
     }
   };
 
@@ -60,6 +63,23 @@ const Page = () => {
           else break;
         }
         break;
+      case "bishop":
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col + i)) moves.push({ row: row + i, col: col + i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col - i)) moves.push({ row: row + i, col: col - i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col + i)) moves.push({ row: row - i, col: col + i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col - i)) moves.push({ row: row - i, col: col - i });
+          else break;
+        }
     }
     setPossibleMoves(moves);
   };
