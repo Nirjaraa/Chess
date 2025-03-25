@@ -29,6 +29,10 @@ const Page = () => {
       case "bishop":
         highlightMoves(row, col, piece.color, piece.name);
         break;
+
+      case "queen":
+        highlightMoves(row, col, piece.color, piece.name);
+        break;
     }
   };
 
@@ -80,6 +84,40 @@ const Page = () => {
           if (isSquareEmpty(row - i, col - i)) moves.push({ row: row - i, col: col - i });
           else break;
         }
+      case "queen":
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col + i)) moves.push({ row: row + i, col: col + i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col - i)) moves.push({ row: row + i, col: col - i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col + i)) moves.push({ row: row - i, col: col + i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col - i)) moves.push({ row: row - i, col: col - i });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row + i, col)) moves.push({ row: row + i, col });
+          else break;
+        }
+        for (let i = 1; i <= 7; i++) {
+          if (isSquareEmpty(row - i, col)) moves.push({ row: row - i, col });
+          else break;
+        }
+        for (let j = 1; j <= 7; j++) {
+          if (isSquareEmpty(row, col + j)) moves.push({ row, col: col + j });
+          else break;
+        }
+        for (let j = 1; j <= 7; j++) {
+          if (isSquareEmpty(row, col - j)) moves.push({ row, col: col - j });
+          else break;
+        }
+        break;
     }
     setPossibleMoves(moves);
   };
