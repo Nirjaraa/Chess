@@ -33,6 +33,9 @@ const Page = () => {
       case "queen":
         highlightMoves(row, col, piece.color, piece.name);
         break;
+      case "king":
+        highlightMoves(row, col, piece.color, piece.name);
+        break;
     }
   };
 
@@ -117,6 +120,16 @@ const Page = () => {
           if (isSquareEmpty(row, col - j)) moves.push({ row, col: col - j });
           else break;
         }
+        break;
+      case "king":
+        if (isSquareEmpty(row + direction, col)) moves.push({ row: row + direction, col });
+        if (isSquareEmpty(row - direction, col)) moves.push({ row: row - direction, col });
+        if (isSquareEmpty(row - direction, col + direction)) moves.push({ row: row - direction, col: col + direction });
+        if (isSquareEmpty(row - direction, col - direction)) moves.push({ row: row - direction, col: col - direction });
+        if (isSquareEmpty(row, col - direction)) moves.push({ row, col: col - direction });
+        if (isSquareEmpty(row, col + direction)) moves.push({ row, col: col + direction });
+        if (isSquareEmpty(row + direction, col + direction)) moves.push({ row: row + direction, col: col + direction });
+        if (isSquareEmpty(row + direction, col - direction)) moves.push({ row: row + direction, col: col - direction });
         break;
     }
     setPossibleMoves(moves);
