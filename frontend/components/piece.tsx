@@ -1,11 +1,11 @@
 import React from "react";
 import { PieceColor } from "@/constants/enums";
 
-interface PieceProps {
+export interface PieceProps {
   name: string;
   color: PieceColor;
   position: string;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 const symbols: Record<string, Record<PieceColor, string>> = {

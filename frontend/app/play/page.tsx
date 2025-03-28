@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
 import Piece from "@/components/piece";
+import { highlightMoves } from "@/function/pieceLogic";
 
 const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -11,128 +12,11 @@ const Page = () => {
   const [selectedPiece, setSelectedPiece] = useState<{ row: number; col: number } | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<{ row: number; col: number }[]>([]);
 
-  function isSquareEmpty(row: number, col: number) {
-    return !boardState.some((piece) => piece.position === columns[col] + rows[row]);
-  }
-
-  const handlePieceClick = (row: number, col: number) => {
-    const piece = boardState.find((p) => p.position === columns[col] + rows[row]);
-    if (!piece) return;
-    setSelectedPiece({ row, col });
-    switch (piece.name) {
-      case "pawn":
-        highlightMoves(row, col, piece.color, piece.name);
-        break;
-      case "rook":
-        highlightMoves(row, col, piece.color, piece.name);
-        break;
-      case "bishop":
-        highlightMoves(row, col, piece.color, piece.name);
-        break;
-
-      case "queen":
-        highlightMoves(row, col, piece.color, piece.name);
-        break;
-      case "king":
-        highlightMoves(row, col, piece.color, piece.name);
-        break;
-    }
-  };
-
-  const highlightMoves = (row: number, col: number, color: PieceColor, name: string) => {
-    const moves = [];
-    const direction = color === PieceColor.WHITE ? -1 : 1;
-    const initialRow = color === PieceColor.WHITE ? 6 : 1;
-    switch (name) {
-      case "pawn":
-        if (isSquareEmpty(row + direction, col)) {
-          moves.push({ row: row + direction, col });
-          if (row === initialRow && isSquareEmpty(row + 2 * direction, col)) {
-            moves.push({ row: row + 2 * direction, col });
-          }
-        }
-        break;
-      case "rook":
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col)) moves.push({ row: row + i, col });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col)) moves.push({ row: row - i, col });
-          else break;
-        }
-        for (let j = 1; j <= 7; j++) {
-          if (isSquareEmpty(row, col + j)) moves.push({ row, col: col + j });
-          else break;
-        }
-        for (let j = 1; j <= 7; j++) {
-          if (isSquareEmpty(row, col - j)) moves.push({ row, col: col - j });
-          else break;
-        }
-        break;
-      case "bishop":
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col + i)) moves.push({ row: row + i, col: col + i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col - i)) moves.push({ row: row + i, col: col - i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col + i)) moves.push({ row: row - i, col: col + i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col - i)) moves.push({ row: row - i, col: col - i });
-          else break;
-        }
-      case "queen":
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col + i)) moves.push({ row: row + i, col: col + i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col - i)) moves.push({ row: row + i, col: col - i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col + i)) moves.push({ row: row - i, col: col + i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col - i)) moves.push({ row: row - i, col: col - i });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row + i, col)) moves.push({ row: row + i, col });
-          else break;
-        }
-        for (let i = 1; i <= 7; i++) {
-          if (isSquareEmpty(row - i, col)) moves.push({ row: row - i, col });
-          else break;
-        }
-        for (let j = 1; j <= 7; j++) {
-          if (isSquareEmpty(row, col + j)) moves.push({ row, col: col + j });
-          else break;
-        }
-        for (let j = 1; j <= 7; j++) {
-          if (isSquareEmpty(row, col - j)) moves.push({ row, col: col - j });
-          else break;
-        }
-        break;
-      case "king":
-        if (isSquareEmpty(row + direction, col)) moves.push({ row: row + direction, col });
-        if (isSquareEmpty(row - direction, col)) moves.push({ row: row - direction, col });
-        if (isSquareEmpty(row - direction, col + direction)) moves.push({ row: row - direction, col: col + direction });
-        if (isSquareEmpty(row - direction, col - direction)) moves.push({ row: row - direction, col: col - direction });
-        if (isSquareEmpty(row, col - direction)) moves.push({ row, col: col - direction });
-        if (isSquareEmpty(row, col + direction)) moves.push({ row, col: col + direction });
-        if (isSquareEmpty(row + direction, col + direction)) moves.push({ row: row + direction, col: col + direction });
-        if (isSquareEmpty(row + direction, col - direction)) moves.push({ row: row + direction, col: col - direction });
-        break;
-    }
+  const handlePieceClick = (row: number, col: number, color: PieceColor, name: string) => {
+    const moves = highlightMoves(row, col, color, name, boardState);
+    console.log("Possible moves:", moves);
     setPossibleMoves(moves);
+    setSelectedPiece({ row, col });
   };
 
   const movePiece = (position: string) => {
@@ -150,6 +34,7 @@ const Page = () => {
     setSelectedPiece(null);
     setPossibleMoves([]);
   };
+
   const createBoard = () => {
     return rows.map((row, rowIndex) =>
       columns.map((col, colIndex) => {
@@ -164,9 +49,16 @@ const Page = () => {
             className={`w-full h-full flex items-center justify-center border cursor-pointer
               ${(rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800"}
               ${isHighlighted ? "bg-red-300" : ""}`}
-            onClick={() => (isHighlighted ? movePiece(columns[colIndex] + rows[rowIndex]) : handlePieceClick(rowIndex, colIndex))}
+            onClick={() => (isHighlighted ? movePiece(columns[colIndex] + rows[rowIndex]) : handlePieceClick(rowIndex, colIndex, piece?.color || PieceColor.WHITE, piece?.name || ""))}
           >
-            {piece && <Piece name={piece.name} color={piece.color} position={piece.position} onClick={() => handlePieceClick(rowIndex, colIndex)} />}
+            {piece && (
+              <Piece
+                name={piece.name}
+                color={piece.color}
+                position={piece.position}
+                onClick={() => handlePieceClick(rowIndex, colIndex, piece?.color || PieceColor.WHITE, piece?.name || "")}
+              />
+            )}
           </div>
         );
       })
