@@ -1,4 +1,5 @@
 import React, { JSX } from "react";
+import Link from "next/link";
 
 const page = () => {
   const squares: JSX.Element[] = [];
@@ -13,7 +14,9 @@ const page = () => {
       <div className="w-64 h-64 grid grid-cols-8 grid-rows-8">{squares}</div>
       <div className="text-5xl font-bold text-center p-5">Want to play Chess?</div>
       <div className="flex space-x-4">
-        <button className="text-2xl font-semibold px-6 py-3 text-white bg-yellow-700 rounded-lg hover:bg-yellow-800">Play With Others</button>
+        <Link href="/play">
+          <button className="text-2xl font-semibold px-6 py-3 text-white bg-yellow-700 rounded-lg hover:bg-yellow-800">Play With Others </button>
+        </Link>
         <button className="text-2xl font-semibold px-6 py-3 text-white bg-green-600 rounded-lg hover:bg-green-700">Play With Computer</button>
       </div>
     </div>
