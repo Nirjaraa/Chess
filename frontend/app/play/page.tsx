@@ -9,7 +9,8 @@ const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
-  const [playerColor, setPlayerColor] = useState("");
+  const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
+
   const [boardState, setBoardState] = useState(initialBoard);
   const [selectedPiece, setSelectedPiece] = useState<{
     row: number;
@@ -21,34 +22,52 @@ const Page = () => {
 
   useEffect(() => {
     socket.on("move", (moveData) => {
+      console.log("Move received:", moveData);
       setBoardState((prev) =>
-        prev.map((piece) => {
-          if (piece.position === moveData.fromPosition) {
-            return { ...piece, position: moveData.toPosition };
-          } else return piece;
-        })
+        prev.map((piece) =>
+          piece.position === moveData.fromPosition
+            ? { ...piece, position: moveData.toPosition }
+            : piece
+        )
       );
     });
+    socket.emit("joinroom");
 
-    socket.on("player-color", (playerColor) => {
-      console.log("Assigned player color:", playerColor);
-      setPlayerColor(playerColor);
+    socket.on("player-color", (color) => {
+      console.log("color:", color);
+      setPlayerColor(color);
     });
 
     return () => {
       socket.off("move");
-      socket.off("player-color");
     };
   }, []);
+
+  const handlePieceClick = (
+    row: number,
+    col: number,
+    color: PieceColor,
+    name: string
+  ) => {
+    console.log(color);
+    console.log(playerColor);
+    if (playerColor && color !== playerColor) {
+      console.log("Can't select opponent's piece");
+      return;
+    }
+
+    const moves = highlightMoves(row, col, color, name, boardState);
+
+    console.log(1);
+    console.log("Possible moves:", moves);
+    setPossibleMoves(moves);
+    setSelectedPiece({ row, col });
+  };
 
   const movePiece = (position: string) => {
     if (!selectedPiece) return;
 
     const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
-    const selected = boardState.find(
-      (piece) => piece.position === fromPosition
-    );
-    if (!selected || selected.color !== playerColor) return;
 
     setBoardState((prev) =>
       prev.map((piece) => {
@@ -66,19 +85,6 @@ const Page = () => {
 
     setSelectedPiece(null);
     setPossibleMoves([]);
-  };
-
-  const handlePieceClick = (
-    row: number,
-    col: number,
-    color: PieceColor,
-    name: string
-  ) => {
-    if (color !== playerColor) return;
-
-    const moves = highlightMoves(row, col, color, name, boardState);
-    setPossibleMoves(moves);
-    setSelectedPiece({ row, col });
   };
 
   const restartGame = () => {

@@ -15,7 +15,9 @@ const rooms: Record<string, Socket[]> = {};
 io.on("connection", (socket: Socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("joinroom", (playerName: string) => {
+  socket.on("joinroom", () => {
+    let playerName: string =
+      (socket.handshake.query.playerName as string) || "Guest";
     let roomId: string | undefined;
     socket.data.playerName = playerName;
 
@@ -34,7 +36,7 @@ io.on("connection", (socket: Socket) => {
       socket.join(roomId);
     }
 
-    const playerColor = rooms[roomId].length === 1 ? "white" : "black";
+    const playerColor = rooms[roomId].length === 1 ? "WHITE" : "BLACK";
     socket.emit("player-color", playerColor);
     socket.emit("player-name", playerName);
     console.log(`${playerName} joined ${roomId} as ${playerColor}`);
