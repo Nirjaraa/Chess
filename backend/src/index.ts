@@ -15,23 +15,42 @@ const rooms: Record<string, Socket[]> = {};
 io.on("connection", (socket: Socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("joinroom", (roomId: string) => {
-    console.log(`${socket.id} is in the ${roomId}`);
+  socket.on("joinroom", (playerName: string) => {
+    let roomId: string | undefined;
+    socket.data.playerName = playerName;
 
-    if (!rooms[roomId]) {
-      rooms[roomId] = [];
+    for (const id in rooms) {
+      if (rooms[id].length < 2) {
+        roomId = id;
+        rooms[roomId].push(socket);
+        socket.join(roomId);
+        break;
+      }
     }
 
-    if (rooms[roomId].length >= 2) {
-      socket.emit("Room is filled");
+    if (!roomId) {
+      roomId = `room-${Date.now()}`; // Use timestamp to generate unique room ID
+      rooms[roomId] = [socket];
+      socket.join(roomId);
     }
 
-    rooms[roomId].push(socket);
-    socket.join(roomId);
     const playerColor = rooms[roomId].length === 1 ? "white" : "black";
     socket.emit("player-color", playerColor);
+    socket.emit("player-name", playerName);
+    console.log(`${playerName} joined ${roomId} as ${playerColor}`);
+
     if (rooms[roomId].length === 2) {
-      io.to(roomId).emit("start the game");
+      const [player1, player2] = rooms[roomId];
+
+      const playerInfo = {
+        white: player1.data.playerName,
+        black: player2.data.playerName,
+      };
+
+      io.to(roomId).emit("player-info", playerInfo);
+      io.to(roomId).emit("start the game", roomId);
+      console.log("Emitting 'start the game' for room:", roomId);
+      console.log(`Game started in room: ${roomId}`);
     }
   });
 
@@ -39,8 +58,11 @@ io.on("connection", (socket: Socket) => {
     console.log("User disconnected:", socket.id);
     for (const roomId in rooms) {
       rooms[roomId] = rooms[roomId].filter((s) => s.id !== socket.id);
-      if (rooms[roomId].length === 1)
-        socket.emit("Other player disconnected.Game-over");
+
+      if (rooms[roomId].length === 1) {
+        const remainingPlayer = rooms[roomId][0];
+        remainingPlayer.emit("Other player disconnected. Game-over");
+      }
       if (rooms[roomId].length === 0) delete rooms[roomId];
     }
   });

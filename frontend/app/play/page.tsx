@@ -3,13 +3,11 @@ import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
 import Piece from "@/components/piece";
 import { highlightMoves } from "@/function/pieceLogic";
-import { io } from "socket.io-client";
 
 const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
-  const socket = io("ws://localhost:5000");
   const [boardState, setBoardState] = useState(initialBoard);
   const [selectedPiece, setSelectedPiece] = useState<{
     row: number;
@@ -30,23 +28,6 @@ const Page = () => {
     setPossibleMoves(moves);
     setSelectedPiece({ row, col });
   };
-
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Connected to server with ID:", socket.id);
-    });
-
-    socket.emit("message", "Hello from the client!");
-
-    socket.on("message", (message) => {
-      console.log("Received from server:", message);
-    });
-
-    return () => {
-      socket.off("hi");
-      socket.disconnect();
-    };
-  }, [socket]);
 
   const movePiece = (position: string) => {
     if (!selectedPiece) return;
