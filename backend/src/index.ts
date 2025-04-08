@@ -54,6 +54,16 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
+  socket.on("move", (movePiece) => {
+    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    if (roomId) {
+      socket.to(roomId).emit("move", movePiece);
+    } else {
+      console.error("Room ID is undefined. Move cannot be emitted.");
+    }
+    console.log(`Move made by ${movePiece.playerName}:`, movePiece);
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
     for (const roomId in rooms) {

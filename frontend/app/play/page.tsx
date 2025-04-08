@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
 import Piece from "@/components/piece";
 import { highlightMoves } from "@/function/pieceLogic";
+import socket from "@/socket/socket";
 
 const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -17,6 +18,45 @@ const Page = () => {
     { row: number; col: number }[]
   >([]);
 
+  useEffect(() => {
+    socket.on("move", (moveData) => {
+      setBoardState((prev) =>
+        prev.map((piece) => {
+          if (piece.position === moveData.fromPosition) {
+            return { ...piece, position: moveData.toPosition };
+          } else return piece;
+        })
+      );
+    });
+
+    return () => {
+      socket.off("move");
+    };
+  }, []);
+
+  const movePiece = (position: string) => {
+    if (!selectedPiece) return;
+
+    const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
+
+    setBoardState((prev) =>
+      prev.map((piece) => {
+        if (piece.position === fromPosition) {
+          return { ...piece, position };
+        }
+        return piece;
+      })
+    );
+
+    socket.emit("move", {
+      fromPosition,
+      toPosition: position,
+    });
+
+    setSelectedPiece(null);
+    setPossibleMoves([]);
+  };
+
   const handlePieceClick = (
     row: number,
     col: number,
@@ -27,25 +67,6 @@ const Page = () => {
     console.log("Possible moves:", moves);
     setPossibleMoves(moves);
     setSelectedPiece({ row, col });
-  };
-
-  const movePiece = (position: string) => {
-    if (!selectedPiece) return;
-
-    setBoardState((prev) =>
-      prev.map((piece) => {
-        if (
-          piece.position ===
-          columns[selectedPiece.col] + rows[selectedPiece.row]
-        ) {
-          return { ...piece, position };
-        }
-        return piece;
-      })
-    );
-
-    setSelectedPiece(null);
-    setPossibleMoves([]);
   };
 
   const restartGame = () => {
