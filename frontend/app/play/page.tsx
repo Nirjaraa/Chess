@@ -9,6 +9,7 @@ const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
+  const [playerColor, setPlayerColor] = useState("");
   const [boardState, setBoardState] = useState(initialBoard);
   const [selectedPiece, setSelectedPiece] = useState<{
     row: number;
@@ -29,8 +30,14 @@ const Page = () => {
       );
     });
 
+    socket.on("player-color", (playerColor) => {
+      console.log("Assigned player color:", playerColor);
+      setPlayerColor(playerColor);
+    });
+
     return () => {
       socket.off("move");
+      socket.off("player-color");
     };
   }, []);
 
@@ -38,6 +45,10 @@ const Page = () => {
     if (!selectedPiece) return;
 
     const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
+    const selected = boardState.find(
+      (piece) => piece.position === fromPosition
+    );
+    if (!selected || selected.color !== playerColor) return;
 
     setBoardState((prev) =>
       prev.map((piece) => {
@@ -63,8 +74,9 @@ const Page = () => {
     color: PieceColor,
     name: string
   ) => {
+    if (color !== playerColor) return;
+
     const moves = highlightMoves(row, col, color, name, boardState);
-    console.log("Possible moves:", moves);
     setPossibleMoves(moves);
     setSelectedPiece({ row, col });
   };
