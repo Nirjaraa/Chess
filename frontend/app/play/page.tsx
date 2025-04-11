@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
+import { useSearchParams } from "next/navigation";
 import Piece from "@/components/piece";
 import { highlightMoves } from "@/function/pieceLogic";
 import socket from "@/socket/socket";
@@ -9,9 +10,14 @@ const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
-  const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
+  const username = socket.io?.opts?.query?.playerName || "Guest";
+  console.log("username:", username);
+    socket.connect();
 
+
+  const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
   const [boardState, setBoardState] = useState(initialBoard);
+  const [hasJoined, setHasJoined] = useState(false);
   const [selectedPiece, setSelectedPiece] = useState<{
     row: number;
     col: number;
@@ -21,6 +27,11 @@ const Page = () => {
   >([]);
 
   useEffect(() => {
+    if (!hasJoined && username) {
+      setHasJoined(true);
+      socket.emit("joinroom");
+    }
+
     socket.on("move", (moveData) => {
       console.log("Move received:", moveData);
       setBoardState((prev) =>
@@ -31,17 +42,17 @@ const Page = () => {
         )
       );
     });
-    socket.emit("joinroom");
 
     socket.on("player-color", (color) => {
-      console.log("color:", color);
+      console.log("player-color 1:", color);
       setPlayerColor(color);
     });
 
     return () => {
       socket.off("move");
+      socket.off("player-color");
     };
-  }, []);
+  }, [username, hasJoined]);
 
   const handlePieceClick = (
     row: number,
@@ -49,13 +60,16 @@ const Page = () => {
     color: PieceColor,
     name: string
   ) => {
-    console.log(color);
-    console.log(playerColor);
-    if (playerColor && color !== playerColor) {
-      console.log("Can't select opponent's piece");
+    console.log("color:", color);
+    console.log("player-color", playerColor);
+    if (!color || !name) {
       return;
     }
 
+    if (color !== playerColor) {
+      console.log("Can't select opponent's piece");
+      return;
+    }
     const moves = highlightMoves(row, col, color, name, boardState);
 
     console.log(1);
@@ -66,7 +80,10 @@ const Page = () => {
 
   const movePiece = (position: string) => {
     if (!selectedPiece) return;
-
+    if (!playerColor) {
+      console.log("Player color not yet assigned!");
+      return;
+    }
     const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
 
     setBoardState((prev) =>
@@ -81,6 +98,7 @@ const Page = () => {
     socket.emit("move", {
       fromPosition,
       toPosition: position,
+      playerColor,
     });
 
     setSelectedPiece(null);
@@ -127,7 +145,7 @@ const Page = () => {
                   handlePieceClick(
                     rowIndex,
                     colIndex,
-                    piece?.color || PieceColor.WHITE,
+                    piece?.color,
                     piece?.name || ""
                   )
                 }
@@ -141,6 +159,9 @@ const Page = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen">
+      <h2 className="text-xl font-semibold mt-4 text-center">
+        You are: {username || "Guest"}
+      </h2>
       <div
         className="w-[512px] h-[512px] grid grid-cols-8 grid-rows-8 border border-black"
         style={{

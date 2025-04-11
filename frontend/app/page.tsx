@@ -6,13 +6,14 @@ import socket from "@/socket/socket";
 
 const Page = () => {
   const [playerName, setPlayerName] = useState("");
+
   const router = useRouter();
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     socket.on("start the game", (roomId: string) => {
       console.log("Redirecting to /play for room:", roomId);
-      router.push(`/play?roomId=${roomId}`);
+      router.push(`/play?roomId=${roomId} `);
     });
 
     return () => {
@@ -22,9 +23,9 @@ const Page = () => {
 
   const handleJoinButton = () => {
     if (playerName.trim()) {
+      socket.io.opts.query = { playerName: playerName.trim() };
       socket.connect();
       setJoining(true);
-      socket.emit("joinroom", playerName.trim());
     } else {
       alert("Please enter your username");
     }
@@ -50,6 +51,7 @@ const Page = () => {
       <div className="text-5xl font-bold text-center p-5">
         Want to play Chess?
       </div>
+
       <input
         type="text"
         value={playerName}
