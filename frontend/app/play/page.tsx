@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
-import { useSearchParams } from "next/navigation";
 import Piece from "@/components/piece";
+import { useSearchParams } from "next/navigation";
 import { highlightMoves } from "@/function/pieceLogic";
 import socket from "@/socket/socket";
 
@@ -12,12 +12,11 @@ const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 const Page = () => {
   const username = socket.io?.opts?.query?.playerName || "Guest";
   console.log("username:", username);
-    socket.connect();
-
+  const searchParams = useSearchParams();
+  const colorParam = searchParams.get("color");
 
   const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
   const [boardState, setBoardState] = useState(initialBoard);
-  const [hasJoined, setHasJoined] = useState(false);
   const [selectedPiece, setSelectedPiece] = useState<{
     row: number;
     col: number;
@@ -27,10 +26,22 @@ const Page = () => {
   >([]);
 
   useEffect(() => {
-    if (!hasJoined && username) {
-      setHasJoined(true);
-      socket.emit("joinroom");
+    if (!colorParam) {
+      console.error("No color param found in the URL.");
+      return;
     }
+
+    if (colorParam.toLowerCase() === "white") {
+      setPlayerColor(PieceColor.WHITE);
+    } else if (colorParam.toLowerCase() === "black") {
+      setPlayerColor(PieceColor.BLACK);
+    } else {
+      console.error("Invalid color param:", colorParam);
+    }
+  }, [colorParam]);
+
+  useEffect(() => {
+    if (!socket.connected) socket.connect();
 
     socket.on("move", (moveData) => {
       console.log("Move received:", moveData);
@@ -43,16 +54,10 @@ const Page = () => {
       );
     });
 
-    socket.on("player-color", (color) => {
-      console.log("player-color 1:", color);
-      setPlayerColor(color);
-    });
-
     return () => {
       socket.off("move");
-      socket.off("player-color");
     };
-  }, [username, hasJoined]);
+  }, []);
 
   const handlePieceClick = (
     row: number,

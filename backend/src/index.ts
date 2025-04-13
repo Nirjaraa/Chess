@@ -37,6 +37,7 @@ io.on("connection", (socket: Socket) => {
 
   const playerColor = rooms[roomId].length === 1 ? "WHITE" : "BLACK";
   socket.emit("player-color", playerColor);
+  console.log("player-color", playerColor);
   socket.emit("player-name", playerName);
   console.log(`${playerName} joined ${roomId} as ${playerColor}`);
 
@@ -48,7 +49,10 @@ io.on("connection", (socket: Socket) => {
     };
 
     io.to(roomId).emit("player-info", playerInfo);
-    io.to(roomId).emit("start the game", roomId);
+
+    player1.emit("start the game", { roomId, color: "WHITE" });
+    player2.emit("start the game", { roomId, color: "BLACK" });
+
     console.log(`Game started in room: ${roomId}`);
   }
 

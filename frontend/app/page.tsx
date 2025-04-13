@@ -11,13 +11,17 @@ const Page = () => {
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
-    socket.on("start the game", (roomId: string) => {
+    socket.on("start the game", ({ roomId, color }) => {
       console.log("Redirecting to /play for room:", roomId);
-      router.push(`/play?roomId=${roomId} `);
+      router.push(`/play?roomId=${roomId}&color=${color}`);
     });
 
+    socket.on("player-color", (color) => {
+      console.log("Received color from socket:", color);
+    });
     return () => {
       socket.off("start the game");
+      socket.off("player-color");
     };
   }, []);
 
