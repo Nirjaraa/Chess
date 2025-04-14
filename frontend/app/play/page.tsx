@@ -14,6 +14,7 @@ const Page = () => {
   console.log("username:", username);
   const searchParams = useSearchParams();
   const colorParam = searchParams.get("color");
+  const [turn, setTurn] = useState<PieceColor>(PieceColor.WHITE);
 
   const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
   const [boardState, setBoardState] = useState(initialBoard);
@@ -44,7 +45,6 @@ const Page = () => {
     if (!socket.connected) socket.connect();
 
     socket.on("move", (moveData) => {
-      console.log("Move received:", moveData);
       setBoardState((prev) =>
         prev.map((piece) =>
           piece.position === moveData.fromPosition
@@ -54,8 +54,13 @@ const Page = () => {
       );
     });
 
+    socket.on("turn", ({ turn }) => {
+      setTurn(turn === "WHITE" ? PieceColor.WHITE : PieceColor.BLACK);
+    });
+
     return () => {
       socket.off("move");
+      socket.off("turn");
     };
   }, []);
 
@@ -65,6 +70,11 @@ const Page = () => {
     color: PieceColor,
     name: string
   ) => {
+    if (color !== playerColor || color !== turn) {
+      console.log("Not your turn or not your piece.");
+      return;
+    }
+
     console.log("color:", color);
     console.log("player-color", playerColor);
     if (!color || !name) {
@@ -108,6 +118,9 @@ const Page = () => {
 
     setSelectedPiece(null);
     setPossibleMoves([]);
+    setTurn((prev) =>
+      prev === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE
+    );
   };
 
   const restartGame = () => {
@@ -166,6 +179,9 @@ const Page = () => {
     <div className="flex flex-col items-center justify-center h-screen">
       <h2 className="text-xl font-semibold mt-4 text-center">
         You are: {username || "Guest"}
+      </h2>
+      <h2 className="text-xl font-semibold mt-4 text-center">
+        Turn: {turn === PieceColor.WHITE ? "White" : "Black"}
       </h2>
       <div
         className="w-[512px] h-[512px] grid grid-cols-8 grid-rows-8 border border-black"

@@ -55,11 +55,13 @@ io.on("connection", (socket: Socket) => {
 
     console.log(`Game started in room: ${roomId}`);
   }
-
   socket.on("move", (movePiece) => {
     const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
     if (roomId) {
       socket.to(roomId).emit("move", movePiece);
+      io.to(roomId).emit("turn", {
+        turn: movePiece.playerColor === "WHITE" ? "BLACK" : "WHITE",
+      });
       console.log(`Move made by ${movePiece.playerName}:`, movePiece);
     } else {
       console.error("Room ID is undefined. Move cannot be emitted.");
