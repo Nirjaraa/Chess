@@ -23,7 +23,7 @@ const Page = () => {
     col: number;
   } | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<
-    { row: number; col: number }[]
+    { row: number; col: number; isCapture: boolean }[]
   >([]);
 
   useEffect(() => {
@@ -85,10 +85,12 @@ const Page = () => {
       console.log("Can't select opponent's piece");
       return;
     }
-    const moves = highlightMoves(row, col, color, name, boardState);
-
-    console.log(1);
-    console.log("Possible moves:", moves);
+    const moves = highlightMoves(row, col, color, name, boardState).map(
+      (move) => ({
+        ...move,
+        isCapture: move.capture || false,
+      })
+    );
     setPossibleMoves(moves);
     setSelectedPiece({ row, col });
   };
@@ -132,19 +134,31 @@ const Page = () => {
       columns.map((col, colIndex) => {
         const position = col + row;
         const piece = boardState.find((p) => p.position === position);
-        const isHighlighted = possibleMoves.some(
+        // const isHighlighted = possibleMoves.some(
+        //   (m) => m.row === rowIndex && m.col === colIndex
+        // );
+        const moveInfo = possibleMoves.find(
           (m) => m.row === rowIndex && m.col === colIndex
         );
+
+        const isCapture = moveInfo?.isCapture;
+        const isMove = moveInfo && !isCapture;
+
+        const squareColor = moveInfo
+          ? isCapture
+            ? "bg-red-400"
+            : "bg-green-400"
+          : (rowIndex + colIndex) % 2 === 0
+          ? "bg-gray-200"
+          : "bg-gray-800";
 
         return (
           <div
             key={position}
             id={position}
-            className={`w-full h-full flex items-center justify-center border cursor-pointer
-              ${(rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800"}
-              ${isHighlighted ? "bg-red-300" : ""}`}
+            className={`w-full h-full flex items-center justify-center border cursor-pointer ${squareColor}`}
             onClick={() =>
-              isHighlighted
+              moveInfo
                 ? movePiece(columns[colIndex] + rows[rowIndex])
                 : handlePieceClick(
                     rowIndex,
