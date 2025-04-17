@@ -18,12 +18,12 @@ function isOpponentPiece(
   boardState: PieceProps[],
   row: number,
   col: number,
-  myColor: PieceColor
+  Color: PieceColor
 ): boolean {
   const piece = boardState.find(
     (piece) => piece.position === columns[col] + rows[row]
   );
-  return piece !== undefined && piece.color !== myColor;
+  return piece !== undefined && piece.color !== Color;
 }
 
 export const highlightMoves = (
