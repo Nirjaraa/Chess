@@ -29,6 +29,9 @@ const Page = () => {
   const [possibleMoves, setPossibleMoves] = useState<
     { row: number; col: number; isCapture: boolean }[]
   >([]);
+  useEffect(() => {
+    console.log("Updated Board State:", boardState);
+  }, [boardState]);
 
   useEffect(() => {
     if (!colorParam) {
@@ -49,17 +52,38 @@ const Page = () => {
     if (!socket.connected) socket.connect();
 
     socket.on("move", (moveData) => {
-      setBoardState((prev) =>
-        prev.map((piece) =>
-          piece.position === moveData.fromPosition
-            ? {
+      setBoardState((prev) => {
+        let newState = JSON.parse(JSON.stringify(prev));
+
+        newState = newState.filter(
+          (p: { position: any }) => p.position !== moveData.toPosition
+        );
+
+        newState = newState.map(
+          (piece: { position: any; name: any; color: any }) => {
+            if (piece.position === moveData.fromPosition) {
+              return {
                 ...piece,
                 position: moveData.toPosition,
                 name: moveData.newPiece || piece.name,
-              }
-            : piece
-        )
-      );
+                color: moveData.pieceColor || piece.color,
+              };
+            }
+            return piece;
+          }
+        );
+
+        console.log("Socket move received:", moveData);
+        console.log(
+          "New board state after socket move:",
+          newState.map(
+            (p: { color: any; name: any; position: any }) =>
+              `${p.color} ${p.name} at ${p.position}`
+          )
+        );
+
+        return newState;
+      });
     });
 
     socket.on("turn", ({ turn }) => {
@@ -104,32 +128,76 @@ const Page = () => {
     const row = rows.indexOf(Number(position[1]));
     const col = columns.indexOf(position[0]);
     const piece = boardState.find((p) => p.position === fromPosition);
-    const isPawn = piece?.name === "pawn";
+
+    if (!piece) return;
+
+    const targetPiece = boardState.find((p) => p.position === position);
+    const isPawn = piece.name === "pawn";
     const reachedLastRank =
-      (piece?.color === PieceColor.WHITE && row === 0) ||
-      (piece?.color === PieceColor.BLACK && row === 7);
+      (piece.color === PieceColor.WHITE && row === 0) ||
+      (piece.color === PieceColor.BLACK && row === 7);
 
     if (isPawn && reachedLastRank) {
       setPawnChange({ position, color: piece.color, fromPosition });
       return;
     }
 
-    updatePiecePosition(fromPosition, position);
-  };
+    let newBoardState = JSON.parse(JSON.stringify(boardState));
 
-  const updatePiecePosition = (from: string, to: string, newPiece?: string) => {
-    setBoardState((prev) =>
-      prev.map((piece) => {
-        if (piece.position === from) {
-          return {
-            ...piece,
-            position: to,
-            name: newPiece || piece.name,
-          };
-        }
-        return piece;
-      })
+    if (targetPiece && targetPiece.color !== piece.color) {
+      newBoardState = newBoardState.filter(
+        (p: { position: string }) => p.position !== position
+      );
+    }
+
+    newBoardState = newBoardState.map((p: { position: string }) => {
+      if (p.position === fromPosition) {
+        return { ...p, position };
+      }
+      return p;
+    });
+
+    console.log(
+      "After move - pieces:",
+      newBoardState.map(
+        (p: { color: any; name: any; position: any }) =>
+          `${p.color} ${p.name} at ${p.position}`
+      )
     );
+
+    setBoardState(newBoardState);
+
+    socket.emit("move", {
+      fromPosition: fromPosition,
+      toPosition: position,
+      playerColor,
+      pieceColor: piece.color,
+      pieceName: piece.name,
+    });
+
+    setSelectedPiece(null);
+    setPossibleMoves([]);
+    setTurn(
+      piece.color === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE
+    );
+  };
+  const updatePiecePosition = (from: string, to: string, newPiece?: string) => {
+    let newBoardState = [...boardState];
+
+    newBoardState = newBoardState.filter((p) => p.position !== to);
+
+    newBoardState = newBoardState.map((p) => {
+      if (p.position === from) {
+        return {
+          ...p,
+          position: to,
+          name: newPiece || p.name,
+        };
+      }
+      return p;
+    });
+
+    setBoardState(newBoardState);
 
     socket.emit("move", {
       fromPosition: from,
