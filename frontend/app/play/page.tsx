@@ -11,10 +11,14 @@ const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
   const username = socket.io?.opts?.query?.playerName || "Guest";
-  console.log("username:", username);
   const searchParams = useSearchParams();
   const colorParam = searchParams.get("color");
   const [turn, setTurn] = useState<PieceColor>(PieceColor.WHITE);
+  const [pawnChange, setPawnChange] = useState<{
+    position: string;
+    color: PieceColor;
+    fromPosition: string;
+  } | null>(null);
 
   const [playerColor, setPlayerColor] = useState<PieceColor | null>(null);
   const [boardState, setBoardState] = useState(initialBoard);
@@ -48,7 +52,11 @@ const Page = () => {
       setBoardState((prev) =>
         prev.map((piece) =>
           piece.position === moveData.fromPosition
-            ? { ...piece, position: moveData.toPosition }
+            ? {
+                ...piece,
+                position: moveData.toPosition,
+                name: moveData.newPiece || piece.name,
+              }
             : piece
         )
       );
@@ -75,16 +83,10 @@ const Page = () => {
       return;
     }
 
-    console.log("color:", color);
-    console.log("player-color", playerColor);
     if (!color || !name) {
       return;
     }
 
-    if (color !== playerColor) {
-      console.log("Can't select opponent's piece");
-      return;
-    }
     const moves = highlightMoves(row, col, color, name, boardState).map(
       (move) => ({
         ...move,
@@ -96,26 +98,44 @@ const Page = () => {
   };
 
   const movePiece = (position: string) => {
-    if (!selectedPiece) return;
-    if (!playerColor) {
-      console.log("Player color not yet assigned!");
+    if (!selectedPiece || !playerColor) return;
+
+    const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
+    const row = rows.indexOf(Number(position[1]));
+    const col = columns.indexOf(position[0]);
+    const piece = boardState.find((p) => p.position === fromPosition);
+    const isPawn = piece?.name === "pawn";
+    const reachedLastRank =
+      (piece?.color === PieceColor.WHITE && row === 0) ||
+      (piece?.color === PieceColor.BLACK && row === 7);
+
+    if (isPawn && reachedLastRank) {
+      setPawnChange({ position, color: piece.color, fromPosition });
       return;
     }
-    const fromPosition = columns[selectedPiece.col] + rows[selectedPiece.row];
 
+    updatePiecePosition(fromPosition, position);
+  };
+
+  const updatePiecePosition = (from: string, to: string, newPiece?: string) => {
     setBoardState((prev) =>
       prev.map((piece) => {
-        if (piece.position === fromPosition) {
-          return { ...piece, position };
+        if (piece.position === from) {
+          return {
+            ...piece,
+            position: to,
+            name: newPiece || piece.name,
+          };
         }
         return piece;
       })
     );
 
     socket.emit("move", {
-      fromPosition,
-      toPosition: position,
+      fromPosition: from,
+      toPosition: to,
       playerColor,
+      newPiece,
     });
 
     setSelectedPiece(null);
@@ -123,6 +143,7 @@ const Page = () => {
     setTurn((prev) =>
       prev === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE
     );
+    setPawnChange(null);
   };
 
   const restartGame = () => {
@@ -134,16 +155,11 @@ const Page = () => {
       columns.map((col, colIndex) => {
         const position = col + row;
         const piece = boardState.find((p) => p.position === position);
-        // const isHighlighted = possibleMoves.some(
-        //   (m) => m.row === rowIndex && m.col === colIndex
-        // );
         const moveInfo = possibleMoves.find(
           (m) => m.row === rowIndex && m.col === colIndex
         );
 
         const isCapture = moveInfo?.isCapture;
-        const isMove = moveInfo && !isCapture;
-
         const squareColor = moveInfo
           ? isCapture
             ? "bg-red-400"
@@ -182,6 +198,28 @@ const Page = () => {
                   )
                 }
               />
+            )}
+            {pawnChange && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-md p-4 flex gap-4">
+                  {["queen", "rook", "bishop", "knight"].map((piece) => (
+                    <button
+                      key={piece}
+                      className="w-16 h-16 bg-gray-100 hover:bg-gray-300 border rounded-md flex items-center justify-center text-sm font-medium"
+                      onClick={() =>
+                        updatePiecePosition(
+                          columns[selectedPiece!.col] +
+                            rows[selectedPiece!.row],
+                          pawnChange.position,
+                          piece
+                        )
+                      }
+                    >
+                      {piece.charAt(0).toUpperCase() + piece.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         );
