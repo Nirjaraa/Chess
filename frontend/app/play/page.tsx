@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
 import Piece, { PieceProps } from "@/components/piece";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { highlightMoves } from "@/function/pieceLogic";
 import socket from "@/socket/socket";
 
@@ -10,6 +10,7 @@ const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
 
 const Page = () => {
+  const router = useRouter();
   const username = socket.io?.opts?.query?.playerName || "Guest";
   const searchParams = useSearchParams();
   const colorParam = searchParams.get("color");
@@ -29,8 +30,10 @@ const Page = () => {
   const [possibleMoves, setPossibleMoves] = useState<
     { row: number; col: number; isCapture: boolean }[]
   >([]);
-  const [isCheck, setIsCheck] = useState(false);
+  const [whiteInCheck, setWhiteInCheck] = useState(false);
+  const [blackInCheck, setBlackInCheck] = useState(false);
   const [isCheckmateState, setIsCheckmateState] = useState(false);
+  const [winningColor, setWinningColor] = useState<PieceColor | null>(null);
 
   useEffect(() => {
     console.log("Updated Board State:", boardState);
@@ -84,6 +87,22 @@ const Page = () => {
               `${p.color} ${p.name} at ${p.position}`
           )
         );
+
+        // Check if any kings are in check after the move
+        const whiteIsInCheck = isKingInCheck(newState, PieceColor.WHITE);
+        const blackIsInCheck = isKingInCheck(newState, PieceColor.BLACK);
+
+        setWhiteInCheck(whiteIsInCheck);
+        setBlackInCheck(blackIsInCheck);
+
+        // Check for checkmate conditions
+        if (whiteIsInCheck && isCheckmate(newState, PieceColor.WHITE)) {
+          setIsCheckmateState(true);
+          setWinningColor(PieceColor.BLACK);
+        } else if (blackIsInCheck && isCheckmate(newState, PieceColor.BLACK)) {
+          setIsCheckmateState(true);
+          setWinningColor(PieceColor.WHITE);
+        }
 
         return newState;
       });
@@ -220,17 +239,7 @@ const Page = () => {
       setSelectedPiece({ row, col });
     }
   };
-  //   const moves = highlightMoves(row, col, color, name, boardState).map(
-  //     (move) => ({
-  //       ...move,
-  //       isCapture: move.capture || false,
-  //     })
-  //   );
-  //   setPossibleMoves(moves);
-  //   setSelectedPiece({ row, col });
-  // };
 
-  // Fix the movePiece function to properly update check and checkmate states
   const movePiece = (position: string) => {
     if (!selectedPiece || !playerColor) return;
 
@@ -281,20 +290,26 @@ const Page = () => {
     const opponentColor =
       piece.color === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
 
-    // Check if the opponent is in check after our move
-    const opponentInCheck = isKingInCheck(newBoardState, opponentColor);
+    // Check if any kings are in check after the move
+    const whiteIsInCheck = isKingInCheck(newBoardState, PieceColor.WHITE);
+    const blackIsInCheck = isKingInCheck(newBoardState, PieceColor.BLACK);
 
-    // Check if it's checkmate
-    const opponentInCheckmate =
-      opponentInCheck && isCheckmate(newBoardState, opponentColor);
+    setWhiteInCheck(whiteIsInCheck);
+    setBlackInCheck(blackIsInCheck);
 
-    setIsCheck(opponentInCheck);
-    setIsCheckmateState(opponentInCheckmate);
-
-    if (opponentInCheckmate) {
-      console.log("Checkmate! " + piece.color + " wins.");
-    } else if (opponentInCheck) {
-      console.log("Check!");
+    // Check for checkmate conditions
+    if (whiteIsInCheck && isCheckmate(newBoardState, PieceColor.WHITE)) {
+      setIsCheckmateState(true);
+      setWinningColor(PieceColor.BLACK);
+      console.log("Checkmate! Black wins.");
+    } else if (blackIsInCheck && isCheckmate(newBoardState, PieceColor.BLACK)) {
+      setIsCheckmateState(true);
+      setWinningColor(PieceColor.WHITE);
+      console.log("Checkmate! White wins.");
+    } else if (whiteIsInCheck) {
+      console.log("White is in check!");
+    } else if (blackIsInCheck) {
+      console.log("Black is in check!");
     }
 
     setBoardState(newBoardState);
@@ -329,6 +344,22 @@ const Page = () => {
       }
       return p;
     });
+
+    // Check if any kings are in check after the promotion move
+    const whiteIsInCheck = isKingInCheck(newBoardState, PieceColor.WHITE);
+    const blackIsInCheck = isKingInCheck(newBoardState, PieceColor.BLACK);
+
+    setWhiteInCheck(whiteIsInCheck);
+    setBlackInCheck(blackIsInCheck);
+
+    // Check for checkmate conditions
+    if (whiteIsInCheck && isCheckmate(newBoardState, PieceColor.WHITE)) {
+      setIsCheckmateState(true);
+      setWinningColor(PieceColor.BLACK);
+    } else if (blackIsInCheck && isCheckmate(newBoardState, PieceColor.BLACK)) {
+      setIsCheckmateState(true);
+      setWinningColor(PieceColor.WHITE);
+    }
 
     setBoardState(newBoardState);
 
@@ -394,7 +425,7 @@ const Page = () => {
   };
 
   const restartGame = () => {
-    setBoardState(initialBoard);
+    router.push("/"); // Redirect to home page
   };
 
   const findKings = (board: PieceProps[]) => {
@@ -477,54 +508,60 @@ const Page = () => {
   };
 
   const createBoard = () => {
-    // Find which king(s) are in check
-    const whiteInCheck = isKingInCheck(boardState, PieceColor.WHITE);
-    const blackInCheck = isKingInCheck(boardState, PieceColor.BLACK);
+    // Find kings' positions
     const { whiteKing, blackKing } = findKings(boardState);
 
-    return rows.map((row, rowIndex) =>
-      columns.map((col, colIndex) => {
+    // Determine whether to flip the board based on player color
+    const boardRows =
+      playerColor === PieceColor.BLACK ? [...rows].reverse() : rows;
+    const boardCols =
+      playerColor === PieceColor.BLACK ? [...columns].reverse() : columns;
+
+    return boardRows.map((row, rowIndex) =>
+      boardCols.map((col, colIndex) => {
         const position = col + row;
         const piece = boardState.find((p) => p.position === position);
+
+        // Map the UI grid position to the logical chess position
+        const logicalRowIndex =
+          playerColor === PieceColor.BLACK ? 7 - rowIndex : rowIndex;
+        const logicalColIndex =
+          playerColor === PieceColor.BLACK ? 7 - colIndex : colIndex;
+
         const moveInfo = possibleMoves.find(
-          (m) => m.row === rowIndex && m.col === colIndex
+          (m) => m.row === logicalRowIndex && m.col === logicalColIndex
         );
         const isCapture = moveInfo?.isCapture;
 
-        const currentPos = columns[colIndex] + rows[rowIndex];
         let squareColor =
           (rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800";
 
-        // Check highlighting logic
+        // Check highlighting logic - highlight the king that's in check
         if (moveInfo) {
           squareColor = isCapture ? "bg-red-400" : "bg-green-400";
         } else if (
-          (whiteInCheck && currentPos === whiteKing) ||
-          (blackInCheck && currentPos === blackKing)
+          (whiteInCheck && position === whiteKing) ||
+          (blackInCheck && position === blackKing)
         ) {
           squareColor = "bg-red-600";
         }
-        // Rest of your code...
-
-        // const squareColor = moveInfo
-        //   ? isCapture
-        //     ? "bg-red-400"
-        //     : "bg-green-400"
-        //   : (rowIndex + colIndex) % 2 === 0
-        //   ? "bg-gray-200"
-        //   : "bg-gray-800";
 
         return (
           <div
             key={position}
             id={position}
-            className={`w-full h-full flex items-center justify-center border cursor-pointer ${squareColor}`}
+            className={`w-full h-full flex items-center justify-center border cursor-pointer ${squareColor} ${
+              (whiteInCheck && position === whiteKing) ||
+              (blackInCheck && position === blackKing)
+                ? "animate-pulse"
+                : ""
+            }`}
             onClick={() =>
               moveInfo
-                ? movePiece(columns[colIndex] + rows[rowIndex])
+                ? movePiece(position)
                 : handlePieceClick(
-                    rowIndex,
-                    colIndex,
+                    logicalRowIndex,
+                    logicalColIndex,
                     piece?.color || PieceColor.WHITE,
                     piece?.name || ""
                   )
@@ -537,40 +574,13 @@ const Page = () => {
                 position={piece.position}
                 onClick={() =>
                   handlePieceClick(
-                    rowIndex,
-                    colIndex,
+                    logicalRowIndex,
+                    logicalColIndex,
                     piece?.color,
                     piece?.name || ""
                   )
                 }
               />
-            )}
-            {pawnChange && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg shadow-md p-4 flex gap-4">
-                  {["queen", "rook", "bishop", "knight"].map((piece) => (
-                    <button
-                      key={piece}
-                      className="w-16 h-16 bg-gray-100 hover:bg-gray-300 border rounded-md flex items-center justify-center text-sm font-medium"
-                      onClick={() =>
-                        updatePiecePosition(
-                          columns[selectedPiece!.col] +
-                            rows[selectedPiece!.row],
-                          pawnChange.position,
-                          piece
-                        )
-                      }
-                    >
-                      {piece.charAt(0).toUpperCase() + piece.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {isCheckmateState && (
-              <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center text-white text-3xl font-bold">
-                Checkmate!
-              </div>
             )}
           </div>
         );
@@ -578,22 +588,110 @@ const Page = () => {
     );
   };
 
+  // Determine if the current player's king is in check
+  const isPlayerInCheck =
+    playerColor === PieceColor.WHITE ? whiteInCheck : blackInCheck;
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
       <h2 className="text-xl font-semibold mt-4 text-center">
-        You are: {username || "Guest"}
+        Player: {username || "Guest"} (
+        {playerColor === PieceColor.WHITE ? "White" : "Black"})
       </h2>
-      <h2 className="text-xl font-semibold mt-4 text-center">
-        Turn: {turn === PieceColor.WHITE ? "White" : "Black"}
+
+      {/* Show check notification only to the player whose king is in check */}
+      {isPlayerInCheck && !isCheckmateState && (
+        <div className="mb-4 mt-2 text-lg font-bold text-red-600 animate-bounce">
+          YOUR KING IS IN CHECK!
+        </div>
+      )}
+
+      <h2 className="text-xl font-semibold mb-4 text-center">
+        {turn === PieceColor.WHITE ? "White" : "Black"}'s Turn
       </h2>
-      <div
-        className="w-[512px] h-[512px] grid grid-cols-8 grid-rows-8 border border-black"
-        style={{
-          gridTemplateColumns: "repeat(8, 1fr)",
-          gridTemplateRows: "repeat(8, 1fr)",
-        }}
-      >
-        {createBoard()}
+
+      <div className="relative">
+        <div
+          className="w-[512px] h-[512px] grid grid-cols-8 grid-rows-8 border-4 border-black rounded-md shadow-lg"
+          style={{
+            gridTemplateColumns: "repeat(8, 1fr)",
+            gridTemplateRows: "repeat(8, 1fr)",
+          }}
+        >
+          {createBoard()}
+        </div>
+
+        {/* Board coordinates - columns */}
+        <div className="absolute bottom-[-25px] left-0 right-0 flex justify-around px-2">
+          {(playerColor === PieceColor.BLACK
+            ? [...columns].reverse()
+            : columns
+          ).map((col) => (
+            <div key={col} className="text-sm font-semibold">
+              {col}
+            </div>
+          ))}
+        </div>
+
+        {/* Board coordinates - rows */}
+        <div className="absolute top-0 bottom-0 left-[-25px] flex flex-col justify-around">
+          {(playerColor === PieceColor.BLACK ? [...rows].reverse() : rows).map(
+            (row) => (
+              <div key={row} className="text-sm font-semibold">
+                {row}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Pawn Promotion Dialog */}
+        {pawnChange && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6">
+              <h3 className="text-xl font-bold mb-4 text-center">
+                Choose Promotion
+              </h3>
+              <div className="flex gap-4">
+                {["queen", "rook", "bishop", "knight"].map((piece) => (
+                  <button
+                    key={piece}
+                    className="w-16 h-16 bg-gray-100 hover:bg-gray-300 border rounded-md flex items-center justify-center text-sm font-medium transition-colors duration-200"
+                    onClick={() =>
+                      updatePiecePosition(
+                        pawnChange.fromPosition,
+                        pawnChange.position,
+                        piece
+                      )
+                    }
+                  >
+                    {piece.charAt(0).toUpperCase() + piece.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Checkmate Overlay */}
+        {isCheckmateState && (
+          <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md text-center transform animate-fadeIn">
+              <h2 className="text-4xl font-bold mb-6 text-yellow-600">
+                CHECKMATE!
+              </h2>
+              <p className="text-2xl font-semibold mb-8">
+                {winningColor === PieceColor.WHITE ? "White" : "Black"} wins the
+                game!
+              </p>
+              <button
+                onClick={restartGame}
+                className="px-8 py-3 bg-blue-600 text-white rounded-lg text-xl font-bold hover:bg-blue-700 transition-colors duration-200 shadow-md"
+              >
+                Play Again
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
