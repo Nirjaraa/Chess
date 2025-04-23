@@ -151,29 +151,52 @@ const Page = () => {
 
     const kingInCheck = isKingInCheck(boardState, color);
 
+    // Get all raw moves for this piece
+    const allPossibleMoves = highlightMoves(row, col, color, name, boardState);
+
+    // Filter moves to ensure they are legal (don't leave/keep king in check)
+    const legalMoves = allPossibleMoves.filter((move) => {
+      // Create a simulated board with this move
+      const simulatedBoard = JSON.parse(JSON.stringify(boardState));
+      const targetPos = columns[move.col] + rows[move.row];
+      const fromPos = columns[col] + rows[row];
+
+      // Remove any captured piece
+      const boardAfterCapture = simulatedBoard.filter(
+        (p: PieceProps) => p.position !== targetPos
+      );
+
+      // Move the piece
+      const updatedBoard = boardAfterCapture.map((p: PieceProps) => {
+        if (p.position === fromPos) {
+          return { ...p, position: targetPos };
+        }
+        return p;
+      });
+
+      // The move is legal if it doesn't leave our king in check
+      return !isKingInCheck(updatedBoard, color);
+    });
+
+    // Now check if move is capturing opponent's king (should never be allowed)
+    const finalLegalMoves = legalMoves.filter((move) => {
+      const targetPos = columns[move.col] + rows[move.row];
+      const targetPiece = boardState.find((p) => p.position === targetPos);
+
+      // Don't allow capturing an opponent's king
+      return !(targetPiece && targetPiece.name === "king");
+    });
+
     if (kingInCheck) {
-      // Get all legal moves that can get king out of check
+      // When in check, show moves that get the king out of check
+      // These are already filtered by getLegalMovesInCheck
       const legalMovesInCheck = getLegalMovesInCheck(boardState, color);
-
-      // Find the current piece's position
       const currentPosition = columns[col] + rows[row];
-
-      // Find if this piece can make legal moves
       const pieceWithMoves = legalMovesInCheck.find(
         (p) => p.piece.position === currentPosition
       );
-      // In handlePieceClick when a king is in check
-      console.log(
-        "Legal moves that can get king out of check:",
-        legalMovesInCheck
-      );
-      console.log("Selected piece position:", columns[col] + rows[row]);
-      console.log(
-        "Pieces with legal moves:",
-        legalMovesInCheck.map((p) => p.piece.position)
-      );
+
       if (pieceWithMoves) {
-        // This piece can make moves - show them
         setPossibleMoves(
           pieceWithMoves.legalMoves.map((move) => ({
             ...move,
@@ -182,20 +205,18 @@ const Page = () => {
         );
         setSelectedPiece({ row, col });
       } else {
-        // This piece cannot make legal moves during check
         console.log("This piece cannot move while king is in check");
         setPossibleMoves([]);
         setSelectedPiece(null);
       }
     } else {
-      // Normal move logic when not in check
-      const moves = highlightMoves(row, col, color, name, boardState).map(
-        (move) => ({
+      // For normal moves, show all legal moves that don't leave king in check
+      setPossibleMoves(
+        finalLegalMoves.map((move) => ({
           ...move,
           isCapture: move.capture || false,
-        })
+        }))
       );
-      setPossibleMoves(moves);
       setSelectedPiece({ row, col });
     }
   };
