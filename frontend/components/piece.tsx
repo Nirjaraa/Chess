@@ -6,6 +6,7 @@ export interface PieceProps {
   color: PieceColor;
   position: string;
   onClick?: () => void;
+  small?: boolean;
 }
 
 const symbols: Record<string, Record<PieceColor, string>> = {
@@ -18,7 +19,14 @@ const symbols: Record<string, Record<PieceColor, string>> = {
 };
 
 const Piece: React.FC<PieceProps> = ({ name, color, onClick }) => (
-  <span style={{ fontSize: "2rem", color: color === PieceColor.WHITE ? "white" : "black", cursor: "pointer" }} onClick={onClick}>
+  <span
+    style={{
+      fontSize: "2rem",
+      color: color === PieceColor.WHITE ? "white" : "black",
+      cursor: "pointer",
+    }}
+    onClick={onClick}
+  >
     {symbols[name]?.[color] || "?"}
   </span>
 );
