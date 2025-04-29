@@ -3,11 +3,21 @@ import React, { useState, useEffect } from "react";
 import { PieceColor, initialBoard } from "@/constants/enums";
 import Piece, { PieceProps } from "@/components/piece";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { highlightMoves } from "@/function/pieceLogic";
 import socket from "@/socket/socket";
 
 const columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const rows = [8, 7, 6, 5, 4, 3, 2, 1];
+
+function ParamsProvider({
+  children,
+}: {
+  children: React.ReactElement<{ searchParams: URLSearchParams }>;
+}) {
+  const searchParams = useSearchParams();
+  return React.cloneElement(children, { searchParams });
+}
 
 const Page = () => {
   const router = useRouter();
@@ -88,14 +98,12 @@ const Page = () => {
           )
         );
 
-        // Check if any kings are in check after the move
         const whiteIsInCheck = isKingInCheck(newState, PieceColor.WHITE);
         const blackIsInCheck = isKingInCheck(newState, PieceColor.BLACK);
 
         setWhiteInCheck(whiteIsInCheck);
         setBlackInCheck(blackIsInCheck);
 
-        // Check for checkmate conditions
         if (whiteIsInCheck && isCheckmate(newState, PieceColor.WHITE)) {
           setIsCheckmateState(true);
           setWinningColor(PieceColor.BLACK);
@@ -122,19 +130,17 @@ const Page = () => {
     const { whiteKing, blackKing } = findKings(board);
     const kingPos = color === PieceColor.WHITE ? whiteKing : blackKing;
 
-    // If king position isn't found, return false
     if (!kingPos) return false;
 
     const row = rows.indexOf(Number(kingPos[1]));
     const col = columns.indexOf(kingPos[0]);
 
     for (const piece of board) {
-      if (piece.color === color) continue; // Skip pieces of the same color
+      if (piece.color === color) continue;
 
       const enemyRow = rows.indexOf(Number(piece.position[1]));
       const enemyCol = columns.indexOf(piece.position[0]);
 
-      // Make sure the piece position is valid
       if (enemyRow < 0 || enemyCol < 0) continue;
 
       const moves = highlightMoves(
@@ -170,22 +176,17 @@ const Page = () => {
 
     const kingInCheck = isKingInCheck(boardState, color);
 
-    // Get all raw moves for this piece
     const allPossibleMoves = highlightMoves(row, col, color, name, boardState);
 
-    // Filter moves to ensure they are legal (don't leave/keep king in check)
     const legalMoves = allPossibleMoves.filter((move) => {
-      // Create a simulated board with this move
       const simulatedBoard = JSON.parse(JSON.stringify(boardState));
       const targetPos = columns[move.col] + rows[move.row];
       const fromPos = columns[col] + rows[row];
 
-      // Remove any captured piece
       const boardAfterCapture = simulatedBoard.filter(
         (p: PieceProps) => p.position !== targetPos
       );
 
-      // Move the piece
       const updatedBoard = boardAfterCapture.map((p: PieceProps) => {
         if (p.position === fromPos) {
           return { ...p, position: targetPos };
@@ -193,22 +194,17 @@ const Page = () => {
         return p;
       });
 
-      // The move is legal if it doesn't leave our king in check
       return !isKingInCheck(updatedBoard, color);
     });
 
-    // Now check if move is capturing opponent's king (should never be allowed)
     const finalLegalMoves = legalMoves.filter((move) => {
       const targetPos = columns[move.col] + rows[move.row];
       const targetPiece = boardState.find((p) => p.position === targetPos);
 
-      // Don't allow capturing an opponent's king
       return !(targetPiece && targetPiece.name === "king");
     });
 
     if (kingInCheck) {
-      // When in check, show moves that get the king out of check
-      // These are already filtered by getLegalMovesInCheck
       const legalMovesInCheck = getLegalMovesInCheck(boardState, color);
       const currentPosition = columns[col] + rows[row];
       const pieceWithMoves = legalMovesInCheck.find(
@@ -229,7 +225,6 @@ const Page = () => {
         setSelectedPiece(null);
       }
     } else {
-      // For normal moves, show all legal moves that don't leave king in check
       setPossibleMoves(
         finalLegalMoves.map((move) => ({
           ...move,
@@ -248,7 +243,6 @@ const Page = () => {
 
     if (!piece) return;
 
-    // Check if this is a valid move
     const row = rows.indexOf(Number(position[1]));
     const col = columns.indexOf(position[0]);
     const moveIsValid = possibleMoves.some(
@@ -286,18 +280,15 @@ const Page = () => {
       return p;
     });
 
-    // Get the opponent's color
     const opponentColor =
       piece.color === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
 
-    // Check if any kings are in check after the move
     const whiteIsInCheck = isKingInCheck(newBoardState, PieceColor.WHITE);
     const blackIsInCheck = isKingInCheck(newBoardState, PieceColor.BLACK);
 
     setWhiteInCheck(whiteIsInCheck);
     setBlackInCheck(blackIsInCheck);
 
-    // Check for checkmate conditions
     if (whiteIsInCheck && isCheckmate(newBoardState, PieceColor.WHITE)) {
       setIsCheckmateState(true);
       setWinningColor(PieceColor.BLACK);
@@ -345,14 +336,12 @@ const Page = () => {
       return p;
     });
 
-    // Check if any kings are in check after the promotion move
     const whiteIsInCheck = isKingInCheck(newBoardState, PieceColor.WHITE);
     const blackIsInCheck = isKingInCheck(newBoardState, PieceColor.BLACK);
 
     setWhiteInCheck(whiteIsInCheck);
     setBlackInCheck(blackIsInCheck);
 
-    // Check for checkmate conditions
     if (whiteIsInCheck && isCheckmate(newBoardState, PieceColor.WHITE)) {
       setIsCheckmateState(true);
       setWinningColor(PieceColor.BLACK);
@@ -379,33 +368,27 @@ const Page = () => {
   };
 
   const isCheckmate = (board: PieceProps[], color: PieceColor): boolean => {
-    // If the king is not in check, it can't be checkmate
     if (!isKingInCheck(board, color)) return false;
 
-    // Try all possible moves for all pieces of the checked color
     for (const piece of board) {
       if (piece.color !== color) continue;
 
       const row = rows.indexOf(Number(piece.position[1]));
       const col = columns.indexOf(piece.position[0]);
 
-      // Skip invalid positions
       if (row < 0 || col < 0) continue;
 
       const moves = highlightMoves(row, col, color, piece.name, board);
 
       for (const move of moves) {
-        // Create a deep copy of the board for simulation
         const simulatedBoard = JSON.parse(JSON.stringify(board));
         const targetPos = columns[move.col] + rows[move.row];
         const fromPos = piece.position;
 
-        // Remove any captured piece at the target position
         const boardAfterCapture = simulatedBoard.filter(
           (p: PieceProps) => p.position !== targetPos
         );
 
-        // Then move the current piece to the target position
         const updatedBoard = boardAfterCapture.map((p: PieceProps) => {
           if (p.position === fromPos) {
             return { ...p, position: targetPos };
@@ -413,19 +396,17 @@ const Page = () => {
           return p;
         });
 
-        // If this move gets the king out of check, it's not checkmate
         if (!isKingInCheck(updatedBoard, color)) {
           return false;
         }
       }
     }
 
-    // If no move can get the king out of check, it's checkmate
     return true;
   };
 
   const restartGame = () => {
-    router.push("/"); // Redirect to home page
+    router.push("/");
   };
 
   const findKings = (board: PieceProps[]) => {
@@ -457,7 +438,6 @@ const Page = () => {
       legalMoves: { row: number; col: number; isCapture?: boolean }[];
     }[] = [];
 
-    // For each piece of the right color
     for (const piece of board) {
       if (piece.color !== color) continue;
 
@@ -466,21 +446,16 @@ const Page = () => {
 
       if (row < 0 || col < 0) continue;
 
-      // Get all possible moves for this piece
       const possibleMoves = highlightMoves(row, col, color, piece.name, board);
 
-      // For each move, check if it gets the king out of check
       const legalMoves = possibleMoves.filter((move) => {
-        // Create a simulated board with this move
         const simulatedBoard = JSON.parse(JSON.stringify(board));
         const targetPos = columns[move.col] + rows[move.row];
 
-        // Remove any captured piece
         const boardAfterCapture = simulatedBoard.filter(
           (p: PieceProps) => p.position !== targetPos
         );
 
-        // Move the piece
         const updatedBoard = boardAfterCapture.map((p: PieceProps) => {
           if (p.position === piece.position) {
             return { ...p, position: targetPos };
@@ -488,11 +463,9 @@ const Page = () => {
           return p;
         });
 
-        // Check if the king is still in check after this move
         return !isKingInCheck(updatedBoard, color);
       });
 
-      // If this piece has legal moves, add it to the list
       if (legalMoves.length > 0) {
         legalPiecesWithMoves.push({
           piece,
@@ -508,10 +481,8 @@ const Page = () => {
   };
 
   const createBoard = () => {
-    // Find kings' positions
     const { whiteKing, blackKing } = findKings(boardState);
 
-    // Determine whether to flip the board based on player color
     const boardRows =
       playerColor === PieceColor.BLACK ? [...rows].reverse() : rows;
     const boardCols =
@@ -522,7 +493,6 @@ const Page = () => {
         const position = col + row;
         const piece = boardState.find((p) => p.position === position);
 
-        // Map the UI grid position to the logical chess position
         const logicalRowIndex =
           playerColor === PieceColor.BLACK ? 7 - rowIndex : rowIndex;
         const logicalColIndex =
@@ -536,7 +506,6 @@ const Page = () => {
         let squareColor =
           (rowIndex + colIndex) % 2 === 0 ? "bg-gray-200" : "bg-gray-800";
 
-        // Check highlighting logic - highlight the king that's in check
         if (moveInfo) {
           squareColor = isCapture ? "bg-red-400" : "bg-green-400";
         } else if (
@@ -588,7 +557,6 @@ const Page = () => {
     );
   };
 
-  // Determine if the current player's king is in check
   const isPlayerInCheck =
     playerColor === PieceColor.WHITE ? whiteInCheck : blackInCheck;
 
@@ -599,7 +567,6 @@ const Page = () => {
         {playerColor === PieceColor.WHITE ? "White" : "Black"})
       </h2>
 
-      {/* Show check notification only to the player whose king is in check */}
       {isPlayerInCheck && !isCheckmateState && (
         <div className="mb-4 mt-2 text-lg font-bold text-red-600 animate-bounce">
           YOUR KING IS IN CHECK!
@@ -621,7 +588,6 @@ const Page = () => {
           {createBoard()}
         </div>
 
-        {/* Board coordinates - columns */}
         <div className="absolute bottom-[-25px] left-0 right-0 flex justify-around px-2">
           {(playerColor === PieceColor.BLACK
             ? [...columns].reverse()
@@ -633,7 +599,6 @@ const Page = () => {
           ))}
         </div>
 
-        {/* Board coordinates - rows */}
         <div className="absolute top-0 bottom-0 left-[-25px] flex flex-col justify-around">
           {(playerColor === PieceColor.BLACK ? [...rows].reverse() : rows).map(
             (row) => (
@@ -644,7 +609,6 @@ const Page = () => {
           )}
         </div>
 
-        {/* Pawn Promotion Dialog */}
         {pawnChange && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl p-6">
@@ -672,7 +636,6 @@ const Page = () => {
           </div>
         )}
 
-        {/* Checkmate Overlay */}
         {isCheckmateState && (
           <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md text-center transform animate-fadeIn">
