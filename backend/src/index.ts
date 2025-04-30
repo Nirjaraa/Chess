@@ -6,7 +6,10 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: [
+      "https://chesss-b2gp.onrender.com",
+      "https://chessss-phi.vercel.app",
+    ],
   },
 });
 
